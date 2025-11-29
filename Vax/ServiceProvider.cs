@@ -32,6 +32,20 @@ public class ServiceProvider : IServiceProvider
             switch (serviceDescriptor.Lifetime)
             {
                 case ServiceLifetime.Singleton:
+                    if (serviceDescriptor.Implementation is not null)
+                    {
+                        _singletonTypes[serviceDescriptor.ServiceType] =
+                            new Lazy<object>(serviceDescriptor.Implementation);
+                        continue;
+                    }
+
+                    if (serviceDescriptor.ImplementationFactory is not null)
+                    {
+                        _singletonTypes[serviceDescriptor.ServiceType] =
+                            new Lazy<object>(() => serviceDescriptor.ImplementationFactory(this));
+                        continue;
+                    }
+
                     _singletonTypes[serviceDescriptor.ServiceType] =
                         new Lazy<object>(() =>
                             Activator.CreateInstance(serviceDescriptor.ImplementationType,
@@ -40,6 +54,13 @@ public class ServiceProvider : IServiceProvider
 
                     continue;
                 case ServiceLifetime.Transient:
+                    if (serviceDescriptor.ImplementationFactory is not null)
+                    {
+                        _transientTypes[serviceDescriptor.ServiceType] =
+                            () => serviceDescriptor.ImplementationFactory(this);
+                        continue;
+                    }
+
                     _transientTypes[serviceDescriptor.ServiceType] =
                         () => Activator.CreateInstance(serviceDescriptor.ImplementationType,
                             GetConstructorParameters(serviceDescriptor))!;
